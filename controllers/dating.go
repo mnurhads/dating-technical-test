@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"net/http"
-
+    "time"
 	"datingapp/structs"
     "datingapp/models"
     Auth "datingapp/jwt"
@@ -224,10 +224,81 @@ func (idb *InDB) LoginService(c *gin.Context) {
 }
 
 func (idb *InDB) ProfilService(c *gin.Context) {
-
+    
 }
 
 func (idb *InDB) ProfilUpdateService(c *gin.Context) {
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.RequestUpdateProfil
+        response    structs.ResponseUpdateProfil
+        errors      structs.ErrorResponse
+        user        models.User
+        //photo       models.Photo
+        profil      models.Profil
+    )
+
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    birthDate := request.Birthdate
+    now, err := time.Parse("2006-01-02", birthDate)
+	if err != nil {
+		panic(err)
+	}
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    // tampilkan data profil
+    tx.Raw("SELECT * FROM profil WHERE user_id = ?", request.UserId).Scan(&profil)
+
+    // update profil
+    tx.Exec("UPDATE profil SET gender = ?, age = ?, birthdate = ?, birth_info = ?, bio = ? WHERE user_id = ?", request.Gender.Value, request.Age, string(now.Format("2006-01-02")), request.BirthInfo, request.Bio, request.UserId)
+    // update photo
+    tx.Exec("UPDATE photo SET image = ? WHERE user_id = ?", request.Image, request.UserId)
+
+    tx.Commit()
+
+    // response
+    response.ResponseCode = 200
+    response.ResponseMsg  = "Updated Profil Successfully"
+    response.ProfilData.UserData.Username = user.Username
+    response.ProfilData.UserData.Fullname = user.Fullname
+    response.ProfilData.UserData.Notelp   = user.Notelp
+    response.ProfilData.UserData.Email    = user.Email
+    response.ProfilData.Age               = profil.Age
+    response.ProfilData.Birthdate         = profil.Birthdate
+    response.ProfilData.BirthInfo         = profil.BirthInfo
+    response.ProfilData.Bio               = profil.Bio
+    response.ProfilData.Gender.Kode       = request.Gender.Kode
+    response.ProfilData.Gender.Value      = request.Gender.Value
+    response.ProfilData.Image.Gambar      = request.Image
+
+    c.JSON(http.StatusOK, response)
+    return;
+}
+
+func (idb *InDB) PremiumService(c *gin.Context) {
     
 }
 

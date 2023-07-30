@@ -109,6 +109,7 @@ func main() {
 		secured.POST("/like", inDB.LikeService)
 		secured.POST("/dislike", inDB.DislikeService)
 		secured.POST("/match", inDB.MatchService)
+		secured.POST("/premium", inDB.PremiumService)
 		secured.POST("/profil/list", inDB.ProfilService)
 		secured.POST("/profil/update", inDB.ProfilUpdateService)
 	}

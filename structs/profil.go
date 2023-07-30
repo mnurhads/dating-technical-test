@@ -1,0 +1,47 @@
+package structs
+
+// import (
+// 	"time"
+// )
+
+type RequestUpdateProfil struct {
+	UserId   	int  			`json:"user_id"` 
+	Age      	int   			`json:"age"`
+	Birthdate	string   		`json:"birthDate"`
+	BirthInfo	string 			`json:"birthInfo"`
+	Bio 		string			`json:"bio"`
+	Gender   	GenderList 		`json:"gender"`
+	Image		string		    `json:"imageInfo"`
+}
+
+type ResponseUpdateProfil struct {
+	ResponseCode 	int 		`json:"responseCode"`
+	ResponseMsg     string		`json:"responseMsg"`
+	ProfilData		ProfilDataDetail `json:"profilDataDetail"`
+}
+
+type ProfilDataDetail struct {
+	UserData 	UserDetailData 	`json:"userDetail"`
+	Age			int				`json:"age"`
+	Birthdate	string			`json:"birthDate"`
+	BirthInfo	string 			`json:"birthInfo"`
+	Bio 		string			`json:"bio"`
+	Gender   	GenderList 		`json:"gender"`
+	Image		ImageProfil		`json:"imageInfo"`
+}
+
+type UserDetailData struct {
+	Username  string	`json:"username"`
+	Fullname  string	`json:"fullname"`
+	Notelp	  string 	`json:"notelp"`
+	Email	  string	`json:"email"`
+}
+
+type GenderList struct {
+	Kode	string   `json:"kode"`
+	Value   int      `json:"value"`
+}
+
+type ImageProfil struct {
+	Gambar   	string	  `json:"imageProfil"`
+}
