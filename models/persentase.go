@@ -5,7 +5,19 @@ type Persentase struct {
 	UserId 		int  	`db:"user_id" json:"user_id"`
 	Like        int     `db:"like" json:"like"`
 	Dislike     int     `db:"dislike" json:"dislike"`
-	Match       int     `db:"match" json:"match"`
+	Matchs      int     `db:"matchs" json:"matchs"`
+}
+
+type Like struct {
+	Like  int  `db:"like" json:"like"`
+}
+
+type Dislike struct {
+	Dislike int `db:"dislike" json:"dislike"`
+}
+
+type MatchUser struct {
+	Matchs  int `db:"matchs" json:"matchs"`
 }
 
 func (b *Persentase) TableName() string {

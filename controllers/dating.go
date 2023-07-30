@@ -264,10 +264,10 @@ func (idb *InDB) ProfilService(c *gin.Context) {
     tx.Raw("SELECT * FROM premium WHERE user_id = ?", request.UserId).Scan(&premi)
     
     if(premi.Id < 1) {
-        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.user_id = ? AND profil.lokasi = ? LIMIT 10", request.Lokasi, request.UserId).Scan(&profilNew)
+        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.lokasi = ? LIMIT 10", request.Lokasi).Scan(&profilNew)
         status = "NOT PREMIUM"
     } else {
-        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.user_id = ? AND profil.lokasi = ?", request.Lokasi, request.UserId).Scan(&profilNew)
+        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.lokasi = ?", request.Lokasi).Scan(&profilNew)
         status = "PREMIUM MEMBER"
     }
 
@@ -427,15 +427,162 @@ func (idb *InDB) PremiumService(c *gin.Context) {
 }
 
 func (idb *InDB) LikeService(c *gin.Context) {
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.LikeDislikeRequest
+        response    structs.LikeDislikeResponse
+        errors      structs.ErrorResponse
+        user        models.User
+        match       models.Match
+        like        models.Like
+        jml         int
+    )
 
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx.Raw("SELECT * FROM persentase WHERE user_id = ?", request.UserId).Scan(&like)
+    // jumlahkan
+    jml = int(like.Like)+1
+
+    tx.Exec("UPDATE persentase SET like = ? WHERE user_id = ?", jml, request.UserId)
+
+    match.ProfilId      = request.ProfilId
+    match.ProfilTujuan  = request.ProfilTujuan
+    matchProses := tx.Table("match").Create(&match).Error
+
+    if(matchProses != nil) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "Match Failed"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx.Commit()
+
+    response.ResponseCode = 200
+    response.ResponseMsg  = "Like Successfully"
+
+    c.JSON(http.StatusOK, response)
+    return
 }
 
 func (idb *InDB) DislikeService(c *gin.Context) {
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.LikeDislikeRequest
+        response    structs.LikeDislikeResponse
+        errors      structs.ErrorResponse
+        user        models.User
+        dislike     models.Dislike
+        jml         int
+    )
 
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx.Raw("SELECT * FROM persentase WHERE user_id = ?", request.UserId).Scan(&dislike)
+    // jumlahkan
+    jml = dislike.Dislike+1
+
+    tx.Exec("UPDATE persentase SET dislike = ? WHERE user_id = ?", jml, request.UserId)
+
+    tx.Commit()
+
+    response.ResponseCode = 200
+    response.ResponseMsg  = "Dislike Successfully"
+
+    c.JSON(http.StatusOK, response)
+    return
 }
 
 func (idb *InDB) MatchService(c *gin.Context) {
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.MatchRequest
+        response    structs.LikeDislikeResponse
+        errors      structs.ErrorResponse
+        user        models.User
+    )
 
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx.Exec("UPDATE match SET profil_match = ? WHERE id = ?", request.ProfilId, request.Id)
+    tx.Commit()
+
+    response.ResponseCode = 200
+    response.ResponseMsg  = "Match Profil Successfully"
+
+    c.JSON(http.StatusOK, response)
+    return
 }
 
 func randomString(length int) string {
