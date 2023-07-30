@@ -224,7 +224,74 @@ func (idb *InDB) LoginService(c *gin.Context) {
 }
 
 func (idb *InDB) ProfilService(c *gin.Context) {
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.RequestProfilList
+        response    structs.ResponseProfilLists
+        errors      structs.ErrorResponse
+        user        models.User
+        profilNew   models.ProfilLink
+        premi       models.Premium
+        status      string
+        gender      string
+    )
+
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+    // select premium
+    tx.Raw("SELECT * FROM premium WHERE user_id = ?", request.UserId).Scan(&premi)
     
+    if(premi.Id < 1) {
+        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.user_id = ? AND profil.lokasi = ? LIMIT 10", request.Lokasi, request.UserId).Scan(&profilNew)
+        status = "NOT PREMIUM"
+    } else {
+        tx.Raw("SELECT profil.gender, profil.age, profil.birthdate, profil.birth_info, profil.bio, photo.image FROM profil JOIN user ON profil.user_id = user.id JOIN photo ON profil.user_id = photo.user_id WHERE profil.user_id = ? AND profil.lokasi = ?", request.Lokasi, request.UserId).Scan(&profilNew)
+        status = "PREMIUM MEMBER"
+    }
+
+    if(profilNew.Gender == 1) {
+        gender = "Laki-Laki"
+    } else {
+        gender = "Perempuan"
+    }
+
+    tx.Commit()
+
+    response.ResponseCode = 200
+    response.ResponseMsg  = "List Profil"
+    response.Premium      = status
+    response.Profil.Age               = profilNew.Age
+    response.Profil.Birthdate         = profilNew.Birthdate
+    response.Profil.BirthInfo         = profilNew.BirthInfo
+    response.Profil.Bio               = profilNew.Bio
+    response.Profil.Gender            = gender
+    response.Profil.Image             = profilNew.Image
+    response.Profil.Lokasi            = request.Lokasi
+
+    c.JSON(http.StatusOK, response)
+    return;
 }
 
 func (idb *InDB) ProfilUpdateService(c *gin.Context) {
@@ -235,7 +302,6 @@ func (idb *InDB) ProfilUpdateService(c *gin.Context) {
         response    structs.ResponseUpdateProfil
         errors      structs.ErrorResponse
         user        models.User
-        //photo       models.Photo
         profil      models.Profil
     )
 
@@ -273,7 +339,7 @@ func (idb *InDB) ProfilUpdateService(c *gin.Context) {
     tx.Raw("SELECT * FROM profil WHERE user_id = ?", request.UserId).Scan(&profil)
 
     // update profil
-    tx.Exec("UPDATE profil SET gender = ?, age = ?, birthdate = ?, birth_info = ?, bio = ? WHERE user_id = ?", request.Gender.Value, request.Age, string(now.Format("2006-01-02")), request.BirthInfo, request.Bio, request.UserId)
+    tx.Exec("UPDATE profil SET gender = ?, age = ?, birthdate = ?, birth_info = ?, bio = ?, lokasi = ? WHERE user_id = ?", request.Gender.Value, request.Age, string(now.Format("2006-01-02")), request.BirthInfo, request.Bio, request.Lokasi, request.UserId)
     // update photo
     tx.Exec("UPDATE photo SET image = ? WHERE user_id = ?", request.Image, request.UserId)
 
@@ -299,7 +365,65 @@ func (idb *InDB) ProfilUpdateService(c *gin.Context) {
 }
 
 func (idb *InDB) PremiumService(c *gin.Context) {
-    
+    stringClientKey 	:= c.Request.Header.Get("secret-key")
+    secretKey           := goDotEnvVariable("SECRET_KEY")
+    var (
+        request     structs.PremiumRequest
+        response    structs.PremiumResponse
+        errors      structs.ErrorResponse
+        user        models.User
+        premium     models.Premium
+    )
+
+    jsonData,_  := ioutil.ReadAll(c.Request.Body)
+    defer c.Request.Body.Close()
+    json.Unmarshal(jsonData, &request)
+
+    if (stringClientKey != secretKey) {
+        errors.ResponseCode   = 211
+        errors.ResponseMsg    = "Invalid Secret Key"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    exp := request.Expired
+    now, err := time.Parse("2006-01-02", exp)
+	if err != nil {
+		panic(err)
+	}
+
+    tx := idb.DB.Begin()
+
+    // tampilkan data user
+    tx.Raw("SELECT * FROM user WHERE id = ?", request.UserId).Scan(&user)
+    if(user.Id == 0) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "User Tidak diketahui"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    premium.UserId    = request.UserId
+    premium.Expired   = string(now.Format("2006-01-02"))
+    premi := tx.Table("premium").Create(&premium).Error
+
+    if(premi != nil) {
+        errors.ResponseCode   = 404
+        errors.ResponseMsg    = "Upgrade Premium Failed"
+
+        c.JSON(http.StatusOK, errors)
+        return
+    }
+
+    tx.Commit()
+
+    response.ResponseCode = 200
+    response.ResponseMsg  = "Upgrade Premium Profil Successfully"
+
+    c.JSON(http.StatusOK, response)
+    return
 }
 
 func (idb *InDB) LikeService(c *gin.Context) {
