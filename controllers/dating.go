@@ -43,6 +43,10 @@ func (idb *InDB) RegisterService(c *gin.Context) {
         response    structs.RegisterResponse
         errors      structs.ErrorResponse
         user        models.User
+        photo       models.Photo
+        profil      models.Profil
+        persen      models.Persentase
+        userNow     models.UserLink
     )
 
     jsonData,_          := ioutil.ReadAll(c.Request.Body)
@@ -124,6 +128,30 @@ func (idb *InDB) RegisterService(c *gin.Context) {
         return
     }
 
+    // tampilkan id user terbaru
+    tx.Raw("SELECT id FROM user WHERE username = ?", request.Username).Scan(&userNow)
+
+    photo.UserId = userNow.Id
+    photos := tx.Table("photo").Create(&photo).Error
+    
+    if(photos != nil) {
+        panic("photo not insert")
+    }
+
+    profil.UserId = userNow.Id
+    profils := tx.Table("profil").Create(&profil).Error
+    
+    if(profils != nil) {
+        panic("profil not insert")
+    }
+
+    persen.UserId = userNow.Id
+    persens := tx.Table("persentase").Create(&persen).Error
+    
+    if(persens != nil) {
+        panic("photo not insert")
+    }
+
     tx.Commit()
 
     response.ResponseCode   = 200
@@ -182,17 +210,37 @@ func (idb *InDB) LoginService(c *gin.Context) {
 
     response.ResponseCode           = 200
     response.ResponseMsg            = "Login Successfully"
-    response.TokenData.AccesToken   = tokenString
-    response.TokenData.TokenType    = "Bearer"
-    response.TokenData.ExpiresIn    = "900"
-    response.UserData.Username      = user.Username
-    response.UserData.Fullname      = user.Fullname
-    response.UserData.Email         = user.Email
-    response.UserData.Notelp        = user.Notelp
-    response.UserData.Status        = user.Status 
+    response.Data.TokenData.AccesToken   = tokenString
+    response.Data.TokenData.TokenType    = "Bearer"
+    response.Data.TokenData.ExpiresIn    = "900"
+    response.Data.UserData.Username      = user.Username
+    response.Data.UserData.Fullname      = user.Fullname
+    response.Data.UserData.Email         = user.Email
+    response.Data.UserData.Notelp        = user.Notelp
+    response.Data.UserData.Status        = user.Status 
 
     c.JSON(http.StatusOK, response)
     return;
+}
+
+func (idb *InDB) ProfilService(c *gin.Context) {
+
+}
+
+func (idb *InDB) ProfilUpdateService(c *gin.Context) {
+    
+}
+
+func (idb *InDB) LikeService(c *gin.Context) {
+
+}
+
+func (idb *InDB) DislikeService(c *gin.Context) {
+
+}
+
+func (idb *InDB) MatchService(c *gin.Context) {
+
 }
 
 func randomString(length int) string {

@@ -22,6 +22,10 @@ type LoginRequest struct {
 type LoginResponse struct {
 	ResponseCode int 			`json:"responseCode"`
 	ResponseMsg  string 		`json:"responseMsg"`
+	Data         Data			`json:"data"`
+}
+
+type Data struct {
 	TokenData    ResponseToken  `json:"accessTokenData"`
 	UserData     UserDetail 	`json:"userData"`
 }

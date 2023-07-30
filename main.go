@@ -6,13 +6,13 @@ import (
 	"os"
 	"log"
 	"time"
-
 	"datingapp/config"
 	"datingapp/controllers"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"path/filepath"
 	limit "github.com/yangxikun/gin-limit-by-key"
+	middleware "datingapp/middleware"
 	"golang.org/x/time/rate"
 )
 
@@ -22,7 +22,7 @@ func goDotEnvVariable(key string) string {
 	path := os.Getenv("GIN_ENV")
 	folder := ""
 	if path == "production" {
-  		folder = "/var/www/golang/connector-api/"
+  		folder = "/var/www/golang/datingapp/"
   	}
     //fmt.Println(filepath.Join(path,folder, ".env"))
 
@@ -92,9 +92,9 @@ func main() {
 		v1.GET("/test-connection", func(c *gin.Context) {
 			expirationTime := time.Now().Add(time.Minute * 15)
 			result := gin.H{
-				"message": "Ok,Dating Connecting looks good!",
-				"status":  http.StatusOK,
-				"data":  expirationTime.Unix(),
+				"responseCode": 200,
+				"responseMsg": "Ok,Dating Connecting looks good!",
+				"times": expirationTime,
 			}
 			c.JSON(http.StatusOK, result)
 			c.AbortWithStatus(200)
@@ -102,6 +102,15 @@ func main() {
 		})
 		v1.POST("/register", inDB.RegisterService)
 		v1.POST("/login", inDB.LoginService)
+	}
+
+	secured := router.Group("/api/v1/auth").Use(middleware.Auth()) 
+	{
+		secured.POST("/like", inDB.LikeService)
+		secured.POST("/dislike", inDB.DislikeService)
+		secured.POST("/match", inDB.MatchService)
+		secured.POST("/profil/list", inDB.ProfilService)
+		secured.POST("/profil/update", inDB.ProfilUpdateService)
 	}
 
 	router.Run(":3000")
